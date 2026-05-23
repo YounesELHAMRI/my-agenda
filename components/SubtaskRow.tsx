@@ -60,6 +60,7 @@ export function SubtaskRow({
             (e.target as HTMLInputElement).blur();
           }
         }}
+        enterKeyHint="done"
         className={`flex-1 text-sm bg-transparent border-none px-1 py-0.5 rounded focus:bg-gray-100 dark:focus:bg-gray-800 focus:outline-none ${
           done
             ? "line-through text-gray-400 dark:text-gray-600"

@@ -73,6 +73,14 @@ export function TaskDetailDrawer({
     }
   }
 
+  function handleClose() {
+    // Flush any pending text edits before unmount (mobile blur is unreliable
+    // when the input is unmounted while focused)
+    saveTitle();
+    saveDescription();
+    onClose();
+  }
+
   function addSubtask(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = newSubtaskTitle.trim();
@@ -88,7 +96,7 @@ export function TaskDetailDrawer({
     <>
       <div
         className="fixed inset-0 bg-black/30 z-40"
-        onClick={onClose}
+        onClick={handleClose}
         aria-hidden
       />
       <aside className="fixed inset-y-0 right-0 w-full sm:w-96 max-w-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-xl z-50 flex flex-col">
@@ -97,7 +105,7 @@ export function TaskDetailDrawer({
             Détail
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             aria-label="Fermer"
           >
@@ -114,6 +122,7 @@ export function TaskDetailDrawer({
             onKeyDown={(e) => {
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
+            enterKeyHint="done"
             className="w-full text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-gray-50 placeholder-gray-400 px-0"
             placeholder="Titre de la tâche"
           />
@@ -156,9 +165,18 @@ export function TaskDetailDrawer({
                 type="text"
                 value={newSubtaskTitle}
                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                placeholder="+ Ajouter une sous-tâche"
+                placeholder="Ajouter une sous-tâche"
+                enterKeyHint="send"
                 className="flex-1 text-sm bg-transparent border border-dashed border-gray-300 dark:border-gray-700 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-solid text-gray-900 dark:text-gray-50"
               />
+              <button
+                type="submit"
+                disabled={!newSubtaskTitle.trim() || createSubtask.isPending}
+                className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium disabled:opacity-40 hover:bg-blue-700 flex-shrink-0"
+                aria-label="Ajouter la sous-tâche"
+              >
+                Ajouter
+              </button>
             </form>
           </div>
 
