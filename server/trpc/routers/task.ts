@@ -82,18 +82,40 @@ export const taskRouter = router({
     .mutation(async ({ ctx, input }) => {
       const task = await ctx.prisma.task.findUnique({
         where: { id: input.id },
-        select: { projectId: true, status: true },
+        select: { projectId: true, status: true, parentTaskId: true },
       });
       if (!task) throw new TRPCError({ code: "NOT_FOUND" });
       await requireProjectAccess(task.projectId, ctx.session.user.id, "EDITOR");
+
       const done = task.status === "DONE";
-      return ctx.prisma.task.update({
+      const updated = await ctx.prisma.task.update({
         where: { id: input.id },
         data: {
           status: done ? "TODO" : "DONE",
           completedAt: done ? null : new Date(),
         },
       });
+
+      // If this was a subtask, sync the parent's status with its children:
+      // all subtasks DONE → parent DONE, any not DONE → parent TODO.
+      if (task.parentTaskId) {
+        const siblings = await ctx.prisma.task.findMany({
+          where: { parentTaskId: task.parentTaskId },
+          select: { status: true },
+        });
+        const allDone =
+          siblings.length > 0 && siblings.every((s) => s.status === "DONE");
+        const desiredStatus = allDone ? "DONE" : "TODO";
+        await ctx.prisma.task.updateMany({
+          where: { id: task.parentTaskId, NOT: { status: desiredStatus } },
+          data: {
+            status: desiredStatus,
+            completedAt: desiredStatus === "DONE" ? new Date() : null,
+          },
+        });
+      }
+
+      return updated;
     }),
 
   update: protectedProcedure
