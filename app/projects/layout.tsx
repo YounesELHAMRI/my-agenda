@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Sidebar } from "@/components/Sidebar";
+import { MobileSidebar } from "@/components/MobileSidebar";
 
 export default async function ProjectsLayout({
   children,
@@ -12,8 +13,12 @@ export default async function ProjectsLayout({
 
   return (
     <div className="flex min-h-screen bg-white dark:bg-gray-950">
-      <Sidebar />
-      <main className="flex-1 p-6 overflow-y-auto">{children}</main>
+      <MobileSidebar>
+        <Sidebar />
+      </MobileSidebar>
+      <main className="flex-1 p-4 pt-16 md:p-6 md:pt-6 overflow-y-auto min-w-0">
+        {children}
+      </main>
     </div>
   );
 }

@@ -71,7 +71,7 @@ export function TaskDetailDrawer({
         onClick={onClose}
         aria-hidden
       />
-      <aside className="fixed inset-y-0 right-0 w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-xl z-50 flex flex-col">
+      <aside className="fixed inset-y-0 right-0 w-full sm:w-96 max-w-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-xl z-50 flex flex-col">
         <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
           <h2 className="text-xs uppercase tracking-wide text-gray-500">
             Détail
