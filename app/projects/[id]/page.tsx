@@ -24,6 +24,8 @@ export default async function ProjectPage({
     where: { projectId: id, parentTaskId: null },
     orderBy: [
       { completedAt: { sort: "asc", nulls: "first" } },
+      { priority: "asc" },
+      { dueAt: { sort: "asc", nulls: "last" } },
       { position: "asc" },
       { createdAt: "desc" },
     ],

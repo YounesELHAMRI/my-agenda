@@ -4,6 +4,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import type { Task } from "@prisma/client";
 import { TaskRow } from "./TaskRow";
+import { TaskDetailDrawer } from "./TaskDetailDrawer";
 
 export function TasksPanel({
   projectId,
@@ -13,6 +14,7 @@ export function TasksPanel({
   initialTasks: Task[];
 }) {
   const [title, setTitle] = useState("");
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
   const { data: tasks } = trpc.task.list.useQuery(
@@ -26,6 +28,10 @@ export function TasksPanel({
       utils.task.list.invalidate({ projectId });
     },
   });
+
+  const selectedTask = selectedTaskId
+    ? tasks.find((t) => t.id === selectedTaskId) ?? null
+    : null;
 
   return (
     <div className="space-y-4">
@@ -62,10 +68,23 @@ export function TasksPanel({
           </li>
         ) : (
           tasks.map((task) => (
-            <TaskRow key={task.id} task={task} projectId={projectId} />
+            <TaskRow
+              key={task.id}
+              task={task}
+              projectId={projectId}
+              onSelect={() => setSelectedTaskId(task.id)}
+            />
           ))
         )}
       </ul>
+
+      {selectedTask && (
+        <TaskDetailDrawer
+          task={selectedTask}
+          projectId={projectId}
+          onClose={() => setSelectedTaskId(null)}
+        />
+      )}
     </div>
   );
 }

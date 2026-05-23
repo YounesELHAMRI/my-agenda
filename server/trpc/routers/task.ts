@@ -11,7 +11,9 @@ export const taskRouter = router({
       return ctx.prisma.task.findMany({
         where: { projectId: input.projectId, parentTaskId: null },
         orderBy: [
-          { completedAt: { sort: "asc", nulls: "first" } },
+          { completedAt: { sort: "asc", nulls: "first" } }, // incomplete first
+          { priority: "asc" }, // P1 (1) → P4 (4)
+          { dueAt: { sort: "asc", nulls: "last" } }, // dated tasks before undated
           { position: "asc" },
           { createdAt: "desc" },
         ],
