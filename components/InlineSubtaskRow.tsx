@@ -2,6 +2,7 @@
 
 import { trpc } from "@/lib/trpc/client";
 import type { SubtaskMeta } from "@/lib/types";
+import { optimisticToggleSubtask } from "@/lib/tasks";
 import { Trash2 } from "lucide-react";
 
 export function InlineSubtaskRow({
@@ -18,14 +19,7 @@ export function InlineSubtaskRow({
       await utils.task.list.cancel({ projectId });
       const prev = utils.task.list.getData({ projectId });
       utils.task.list.setData({ projectId }, (old) =>
-        old?.map((t) => ({
-          ...t,
-          subtasks: t.subtasks.map((s) =>
-            s.id === subtask.id
-              ? { ...s, status: s.status === "DONE" ? "TODO" : "DONE" }
-              : s
-          ),
-        }))
+        old ? optimisticToggleSubtask(old, subtask.id) : old
       );
       return { prev };
     },

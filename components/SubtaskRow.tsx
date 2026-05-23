@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import type { SubtaskMeta } from "@/lib/types";
+import { optimisticToggleSubtask } from "@/lib/tasks";
 import { X } from "lucide-react";
 
 export function SubtaskRow({
@@ -20,6 +21,17 @@ export function SubtaskRow({
   }, [subtask.title]);
 
   const toggle = trpc.task.toggle.useMutation({
+    async onMutate() {
+      await utils.task.list.cancel({ projectId });
+      const prev = utils.task.list.getData({ projectId });
+      utils.task.list.setData({ projectId }, (old) =>
+        old ? optimisticToggleSubtask(old, subtask.id) : old
+      );
+      return { prev };
+    },
+    onError(_e, _v, ctx) {
+      if (ctx?.prev) utils.task.list.setData({ projectId }, ctx.prev);
+    },
     onSettled: () => utils.task.list.invalidate({ projectId }),
   });
 
