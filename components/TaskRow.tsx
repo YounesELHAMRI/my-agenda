@@ -1,8 +1,8 @@
 "use client";
 
 import { trpc } from "@/lib/trpc/client";
-import type { Task } from "@prisma/client";
-import { Flag, Trash2 } from "lucide-react";
+import type { TaskWithSubtasks } from "@/lib/types";
+import { Flag, Trash2, ListChecks } from "lucide-react";
 import { formatDueDate, type DueTone } from "@/lib/date";
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -23,7 +23,7 @@ export function TaskRow({
   projectId,
   onSelect,
 }: {
-  task: Task;
+  task: TaskWithSubtasks;
   projectId: string;
   onSelect: () => void;
 }) {
@@ -61,6 +61,8 @@ export function TaskRow({
   const done = task.status === "DONE";
   const due = task.dueAt ? formatDueDate(task.dueAt) : null;
   const showFlag = task.priority < 4;
+  const subtaskTotal = task.subtasks.length;
+  const subtaskDone = task.subtasks.filter((s) => s.status === "DONE").length;
 
   return (
     <li
@@ -72,12 +74,12 @@ export function TaskRow({
         checked={done}
         onChange={() => toggle.mutate({ id: task.id })}
         onClick={(e) => e.stopPropagation()}
-        className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+        className="h-4 w-4 rounded border-gray-300 cursor-pointer flex-shrink-0"
       />
       {showFlag && (
         <Flag
           size={14}
-          className={PRIORITY_COLORS[task.priority] ?? "text-gray-400"}
+          className={`flex-shrink-0 ${PRIORITY_COLORS[task.priority] ?? "text-gray-400"}`}
           aria-label={`Priorité P${task.priority}`}
         />
       )}
@@ -90,6 +92,17 @@ export function TaskRow({
       >
         {task.title}
       </span>
+      {subtaskTotal > 0 && (
+        <span
+          className={`flex items-center gap-1 text-xs whitespace-nowrap ${
+            subtaskDone === subtaskTotal ? "text-green-600" : "text-gray-500"
+          } ${done ? "opacity-50" : ""}`}
+          aria-label={`${subtaskDone} sur ${subtaskTotal} sous-tâches terminées`}
+        >
+          <ListChecks size={12} />
+          {subtaskDone}/{subtaskTotal}
+        </span>
+      )}
       {due && (
         <span
           className={`text-xs whitespace-nowrap ${TONE_CLASSES[due.tone]} ${
@@ -105,7 +118,7 @@ export function TaskRow({
           e.stopPropagation();
           if (confirm("Supprimer cette tâche ?")) del.mutate({ id: task.id });
         }}
-        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity"
+        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity flex-shrink-0"
         aria-label="Supprimer"
       >
         <Trash2 size={16} />

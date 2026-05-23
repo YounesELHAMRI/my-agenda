@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
-import type { Task } from "@prisma/client";
+import type { TaskWithSubtasks } from "@/lib/types";
 import { X, Flag, Trash2 } from "lucide-react";
 import { toDateInputValue, fromDateInputValue } from "@/lib/date";
+import { SubtaskRow } from "./SubtaskRow";
 
 const PRIORITIES = [
   { value: 1, label: "P1", color: "text-red-500 fill-red-500" },
@@ -18,13 +19,14 @@ export function TaskDetailDrawer({
   projectId,
   onClose,
 }: {
-  task: Task;
+  task: TaskWithSubtasks;
   projectId: string;
   onClose: () => void;
 }) {
   const utils = trpc.useUtils();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
   useEffect(() => {
     setTitle(task.title);
@@ -41,6 +43,13 @@ export function TaskDetailDrawer({
 
   const update = trpc.task.update.useMutation({
     onSuccess: () => utils.task.list.invalidate({ projectId }),
+  });
+
+  const createSubtask = trpc.task.create.useMutation({
+    onSuccess: () => {
+      setNewSubtaskTitle("");
+      utils.task.list.invalidate({ projectId });
+    },
   });
 
   const del = trpc.task.delete.useMutation({
@@ -62,6 +71,17 @@ export function TaskDetailDrawer({
     if (value !== (task.description ?? null)) {
       update.mutate({ id: task.id, description: value });
     }
+  }
+
+  function addSubtask(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = newSubtaskTitle.trim();
+    if (!trimmed) return;
+    createSubtask.mutate({
+      projectId,
+      parentTaskId: task.id,
+      title: trimmed,
+    });
   }
 
   return (
@@ -110,6 +130,36 @@ export function TaskDetailDrawer({
               className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-50 resize-none"
               placeholder="Ajouter une description..."
             />
+          </div>
+
+          <div>
+            <label className="text-xs uppercase tracking-wide text-gray-500 mb-1.5 block">
+              Sous-tâches{" "}
+              {task.subtasks.length > 0 && (
+                <span className="text-gray-400 normal-case tracking-normal ml-1">
+                  ({task.subtasks.filter((s) => s.status === "DONE").length}/
+                  {task.subtasks.length})
+                </span>
+              )}
+            </label>
+            <ul className="space-y-1 mb-2">
+              {task.subtasks.map((sub) => (
+                <SubtaskRow
+                  key={sub.id}
+                  subtask={sub}
+                  projectId={projectId}
+                />
+              ))}
+            </ul>
+            <form onSubmit={addSubtask} className="flex gap-2">
+              <input
+                type="text"
+                value={newSubtaskTitle}
+                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                placeholder="+ Ajouter une sous-tâche"
+                className="flex-1 text-sm bg-transparent border border-dashed border-gray-300 dark:border-gray-700 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-solid text-gray-900 dark:text-gray-50"
+              />
+            </form>
           </div>
 
           <div>

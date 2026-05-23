@@ -11,12 +11,18 @@ export const taskRouter = router({
       return ctx.prisma.task.findMany({
         where: { projectId: input.projectId, parentTaskId: null },
         orderBy: [
-          { completedAt: { sort: "asc", nulls: "first" } }, // incomplete first
-          { priority: "asc" }, // P1 (1) → P4 (4)
-          { dueAt: { sort: "asc", nulls: "last" } }, // dated tasks before undated
+          { completedAt: { sort: "asc", nulls: "first" } },
+          { priority: "asc" },
+          { dueAt: { sort: "asc", nulls: "last" } },
           { position: "asc" },
           { createdAt: "desc" },
         ],
+        include: {
+          subtasks: {
+            select: { id: true, status: true, title: true },
+            orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+          },
+        },
       });
     }),
 
@@ -24,6 +30,7 @@ export const taskRouter = router({
     .input(
       z.object({
         projectId: z.string(),
+        parentTaskId: z.string().optional(),
         title: z.string().min(1).max(500),
         description: z.string().optional(),
         dueAt: z.date().optional(),
@@ -32,14 +39,38 @@ export const taskRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       await requireProjectAccess(input.projectId, ctx.session.user.id, "EDITOR");
+
+      if (input.parentTaskId) {
+        // Validate parent belongs to same project
+        const parent = await ctx.prisma.task.findUnique({
+          where: { id: input.parentTaskId },
+          select: { projectId: true },
+        });
+        if (!parent || parent.projectId !== input.projectId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Tâche parente invalide",
+          });
+        }
+      }
+
       const last = await ctx.prisma.task.findFirst({
-        where: { projectId: input.projectId, parentTaskId: null },
+        where: {
+          projectId: input.projectId,
+          parentTaskId: input.parentTaskId ?? null,
+        },
         orderBy: { position: "desc" },
         select: { position: true },
       });
+
       return ctx.prisma.task.create({
         data: {
-          ...input,
+          projectId: input.projectId,
+          parentTaskId: input.parentTaskId ?? null,
+          title: input.title,
+          description: input.description,
+          dueAt: input.dueAt,
+          priority: input.priority,
           creatorId: ctx.session.user.id,
           position: (last?.position ?? 0) + 1,
         },

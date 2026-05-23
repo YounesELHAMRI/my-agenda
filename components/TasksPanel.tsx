@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
-import type { Task } from "@prisma/client";
+import type { TaskWithSubtasks } from "@/lib/types";
 import { TaskRow } from "./TaskRow";
 import { TaskDetailDrawer } from "./TaskDetailDrawer";
 
@@ -11,7 +11,7 @@ export function TasksPanel({
   initialTasks,
 }: {
   projectId: string;
-  initialTasks: Task[];
+  initialTasks: TaskWithSubtasks[];
 }) {
   const [title, setTitle] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);

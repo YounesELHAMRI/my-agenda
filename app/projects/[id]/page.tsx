@@ -29,6 +29,12 @@ export default async function ProjectPage({
       { position: "asc" },
       { createdAt: "desc" },
     ],
+    include: {
+      subtasks: {
+        select: { id: true, status: true, title: true },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      },
+    },
   });
 
   return (
