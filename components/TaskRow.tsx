@@ -2,7 +2,7 @@
 
 import { trpc } from "@/lib/trpc/client";
 import type { TaskWithSubtasks } from "@/lib/types";
-import { Flag, Trash2, ListChecks } from "lucide-react";
+import { Flag, Trash2, ListChecks, Plus, Minus } from "lucide-react";
 import { formatDueDate, type DueTone } from "@/lib/date";
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -22,10 +22,14 @@ export function TaskRow({
   task,
   projectId,
   onSelect,
+  expanded,
+  onToggleExpand,
 }: {
   task: TaskWithSubtasks;
   projectId: string;
   onSelect: () => void;
+  expanded: boolean;
+  onToggleExpand: () => void;
 }) {
   const utils = trpc.useUtils();
 
@@ -61,6 +65,7 @@ export function TaskRow({
   const done = task.status === "DONE";
   const due = task.dueAt ? formatDueDate(task.dueAt) : null;
   const showFlag = task.priority < 4;
+  const hasSubtasks = task.subtasks.length > 0;
   const subtaskTotal = task.subtasks.length;
   const subtaskDone = task.subtasks.filter((s) => s.status === "DONE").length;
 
@@ -69,6 +74,23 @@ export function TaskRow({
       onClick={onSelect}
       className="flex items-center gap-3 py-2.5 group hover:bg-gray-50 dark:hover:bg-gray-900/50 -mx-2 px-2 rounded-md cursor-pointer"
     >
+      {hasSubtasks ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleExpand();
+          }}
+          className="flex items-center justify-center w-5 h-5 rounded text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-800 flex-shrink-0"
+          aria-label={
+            expanded ? "Réduire les sous-tâches" : "Afficher les sous-tâches"
+          }
+        >
+          {expanded ? <Minus size={14} /> : <Plus size={14} />}
+        </button>
+      ) : (
+        <span className="w-5 h-5 flex-shrink-0" aria-hidden />
+      )}
       <input
         type="checkbox"
         checked={done}

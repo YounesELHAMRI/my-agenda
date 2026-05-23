@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import type { TaskWithSubtasks } from "@/lib/types";
 import { TaskRow } from "./TaskRow";
 import { TaskDetailDrawer } from "./TaskDetailDrawer";
+import { InlineSubtaskRow } from "./InlineSubtaskRow";
 
 export function TasksPanel({
   projectId,
@@ -15,6 +16,7 @@ export function TasksPanel({
 }) {
   const [title, setTitle] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const utils = trpc.useUtils();
 
   const { data: tasks } = trpc.task.list.useQuery(
@@ -28,6 +30,15 @@ export function TasksPanel({
       utils.task.list.invalidate({ projectId });
     },
   });
+
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const selectedTask = selectedTaskId
     ? tasks.find((t) => t.id === selectedTaskId) ?? null
@@ -49,6 +60,7 @@ export function TasksPanel({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Ajouter une tâche..."
+          enterKeyHint="send"
           className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-50"
           autoFocus
         />
@@ -68,12 +80,23 @@ export function TasksPanel({
           </li>
         ) : (
           tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              projectId={projectId}
-              onSelect={() => setSelectedTaskId(task.id)}
-            />
+            <Fragment key={task.id}>
+              <TaskRow
+                task={task}
+                projectId={projectId}
+                onSelect={() => setSelectedTaskId(task.id)}
+                expanded={expanded.has(task.id)}
+                onToggleExpand={() => toggleExpand(task.id)}
+              />
+              {expanded.has(task.id) &&
+                task.subtasks.map((sub) => (
+                  <InlineSubtaskRow
+                    key={sub.id}
+                    subtask={sub}
+                    projectId={projectId}
+                  />
+                ))}
+            </Fragment>
           ))
         )}
       </ul>
