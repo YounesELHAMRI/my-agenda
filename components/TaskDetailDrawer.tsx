@@ -6,6 +6,7 @@ import type { TaskWithSubtasks } from "@/lib/types";
 import { X, Flag, Trash2 } from "lucide-react";
 import { toDateInputValue, fromDateInputValue } from "@/lib/date";
 import { SubtaskRow } from "./SubtaskRow";
+import { RemindersSection } from "./RemindersSection";
 
 const PRIORITIES = [
   { value: 1, label: "P1", color: "text-red-500 fill-red-500" },
@@ -179,6 +180,8 @@ export function TaskDetailDrawer({
               </button>
             </form>
           </div>
+
+          <RemindersSection taskId={task.id} />
 
           <div>
             <label className="text-xs uppercase tracking-wide text-gray-500 mb-1.5 block">

@@ -3,8 +3,9 @@
 //   - HTML navigations: network-first with cache fallback (offline shell)
 //   - Static assets (_next/static, icons, fonts): cache-first
 //   - API calls and auth callbacks: bypass cache entirely (fresh or fail)
+// Plus push notification + click handling.
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_NAME = `task-app-${CACHE_VERSION}`;
 const OFFLINE_SHELL = "/";
 
@@ -43,7 +44,6 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(req.url);
 
-  // Skip API, auth, and Next data prefetches — they must hit the network
   if (
     url.pathname.startsWith("/api/") ||
     url.pathname.startsWith("/_next/data/")
@@ -51,7 +51,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // HTML navigations: network-first, offline fallback to cached shell
   const accept = req.headers.get("accept") ?? "";
   if (req.mode === "navigate" || accept.includes("text/html")) {
     event.respondWith(
@@ -64,13 +63,14 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() =>
-          caches.match(req).then((cached) => cached ?? caches.match(OFFLINE_SHELL))
+          caches
+            .match(req)
+            .then((cached) => cached ?? caches.match(OFFLINE_SHELL))
         )
     );
     return;
   }
 
-  // Static assets: cache-first
   if (isStaticAsset(url)) {
     event.respondWith(
       caches.match(req).then((cached) => {
@@ -85,4 +85,54 @@ self.addEventListener("fetch", (event) => {
       })
     );
   }
+});
+
+// ─── Push notifications ─────────────────────────────────────────────────
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (_) {
+    data = { title: "My Agenda", body: event.data ? event.data.text() : "" };
+  }
+
+  const title = data.title || "My Agenda";
+  const options = {
+    body: data.body || "",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
+    data: { url: data.url || "/" },
+    tag: data.tag,
+    requireInteraction: false,
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl =
+    (event.notification.data && event.notification.data.url) || "/";
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        // Focus existing window on same origin if possible
+        for (const client of clients) {
+          if ("focus" in client) {
+            try {
+              client.navigate(targetUrl);
+            } catch (_) {
+              /* navigate may fail across cross-origin contexts */
+            }
+            return client.focus();
+          }
+        }
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl);
+        }
+      })
+  );
 });
