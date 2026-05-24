@@ -44,9 +44,11 @@ export function MobileSidebar({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      {/* Sidebar container: fixed slide-in on mobile, static flex item on md+ */}
+      {/* Sidebar container: fixed slide-in on mobile, static flex item on md+.
+          `flex` on the wrapper stretches the inner aside to the wrapper's full
+          height instead of shrinking to its content. */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 transform transition-transform md:relative md:z-auto md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex transform transition-transform md:relative md:z-auto md:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
