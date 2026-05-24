@@ -51,6 +51,8 @@ The schema is built for **sharing from day one**, not bolted on. Read `prisma/sc
 - `routers/_app.ts` — root router: `task`, `project`, `reminder`, `push`.
 - Permission rule: every mutation that touches project-scoped data goes through `requireProjectAccess(projectId, userId, minRole)`. `task.update` / `task.delete` / `task.toggle` resolve `projectId` from the task before checking.
 - **Subtask completion ripple**: `task.toggle` reads the toggled task's `parentTaskId`. If it's a subtask, it recomputes the parent's status: all siblings DONE → parent DONE, any not DONE → parent TODO. Single-level only (no recursion to grandparent).
+- **Moving a task across projects**: `task.move` validates EDITOR on both source and destination, then wraps the parent `projectId` update + a cascading `updateMany` on direct subtasks in a `$transaction`. Refuses to move a subtask directly — the caller should move its parent.
+- `project.inbox` returns the current user's `isInbox = true` project so the client (e.g. `QuickCapture`) can route captures without hardcoding an id.
 
 ## Optimistic UI ↔ backend mirror
 
@@ -62,9 +64,12 @@ The schema is built for **sharing from day one**, not bolted on. Read `prisma/sc
 
 - **Server component fetches initial data + passes to client component with `initialData`**. Pattern in `app/projects/[id]/page.tsx` → `TasksPanel` → `trpc.task.list.useQuery({ projectId }, { initialData: initialTasks })`. No loading flash on navigation.
 - **Sidebar split into two components**: `components/Sidebar.tsx` is a **server** component that fetches projects via Prisma directly. `components/MobileSidebar.tsx` is a **client** wrapper that adds hamburger toggle + slide-in transform on `< md` and is a passthrough on `≥ md`. Server-component-as-child-of-client is the standard Next.js App Router pattern; rely on it.
-- **Save on blur for inline edits**, with `handleClose` in `TaskDetailDrawer` flushing pending title/description edits before unmount. Mobile blur is unreliable when the focused input is unmounted (backdrop tap races onClose).
+- **`router.refresh()` after mutations that change sidebar counts.** Because the sidebar is a server component fetching counts via Prisma directly, tRPC invalidation doesn't touch it. `task.create` / `task.delete` / `task.toggle` / `task.move` all call `router.refresh()` (from `next/navigation`) in their `onSuccess` / `onSettled`. `task.update` does not — priority/date/description don't affect the non-DONE count the badge displays.
+- **Modals portal to `document.body`** via `createPortal`, gated by a `mounted` flag (document is undefined during SSR). `MobileSidebar` puts a `transform` on its wrapper for the slide-in animation, which establishes a new CSS containing block. Without the portal, a `fixed left-1/2` modal resolves against the 256px sidebar instead of the viewport. Any new modal/popover at the layout level needs the same treatment — see `components/QuickCapture.tsx`.
+- **Save on blur for inline edits**, with `handleClose` in `TaskDetailDrawer` flushing pending title/description edits before unmount. Mobile blur is unreliable when the focused input is unmounted (backdrop tap races onClose). For mobile UX, every quick-add form also has a visible submit button so the user doesn't have to rely on the keyboard's Enter key.
 - **`enterKeyHint`** is set on every editable input that should submit/dismiss (`"done"` for inline edits, `"send"` for quick-add forms). Mobile keyboards show the right label.
-- **Date display**: `lib/date.ts → formatDueDate(date)` returns `{label, tone}` with tones `past | today | soon | future`. `TONE_CLASSES` lookup in `TaskRow` colors the badge.
+- **Date display**: `lib/date.ts → formatDueDate(date)` returns `{label, tone}` with tones `past | today | soon | future`. Special labels `Aujourd'hui` / `Demain`; everything else is `"25 mai"` (with year if not current). `TONE_CLASSES` lookup in `TaskRow` colors the badge.
+- **Quick capture**: `components/QuickCapture.tsx` is mounted in the sidebar and reachable from anywhere via **Ctrl/Cmd+K**. Submits via `task.create` with `projectId = inbox.id` from the `project.inbox` query, then closes.
 
 ## PWA / push
 
