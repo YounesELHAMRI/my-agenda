@@ -8,11 +8,15 @@ export function formatDueDate(date: Date | string): { label: string; tone: DueTo
   tomorrow.setDate(tomorrow.getDate() + 1);
   const due = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
+  const sameYear = due.getFullYear() === today.getFullYear();
+  const dateLabel = due.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
+
   if (due < today) {
-    return {
-      label: due.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
-      tone: "past",
-    };
+    return { label: dateLabel, tone: "past" };
   }
   if (due.getTime() === today.getTime()) {
     return { label: "Aujourd'hui", tone: "today" };
@@ -23,25 +27,9 @@ export function formatDueDate(date: Date | string): { label: string; tone: DueTo
   const sevenDaysOut = new Date(today);
   sevenDaysOut.setDate(sevenDaysOut.getDate() + 7);
   if (due < sevenDaysOut) {
-    return {
-      label: due.toLocaleDateString("fr-FR", { weekday: "long" }),
-      tone: "soon",
-    };
+    return { label: dateLabel, tone: "soon" };
   }
-  if (due.getFullYear() === today.getFullYear()) {
-    return {
-      label: due.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
-      tone: "future",
-    };
-  }
-  return {
-    label: due.toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }),
-    tone: "future",
-  };
+  return { label: dateLabel, tone: "future" };
 }
 
 export function toDateInputValue(date: Date | string | null | undefined): string {
