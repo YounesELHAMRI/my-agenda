@@ -42,6 +42,8 @@ export function TaskDetailDrawer({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const { data: projects = [] } = trpc.project.list.useQuery();
+
   const update = trpc.task.update.useMutation({
     onSuccess: () => utils.task.list.invalidate({ projectId }),
   });
@@ -50,6 +52,13 @@ export function TaskDetailDrawer({
     onSuccess: () => {
       setNewSubtaskTitle("");
       utils.task.list.invalidate({ projectId });
+    },
+  });
+
+  const move = trpc.task.move.useMutation({
+    onSuccess: () => {
+      utils.task.list.invalidate();
+      onClose();
     },
   });
 
@@ -235,6 +244,30 @@ export function TaskDetailDrawer({
                 );
               })}
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs uppercase tracking-wide text-gray-500 mb-1.5 block">
+              Projet
+            </label>
+            <select
+              value={task.projectId}
+              onChange={(e) => {
+                const newProjectId = e.target.value;
+                if (newProjectId !== task.projectId) {
+                  move.mutate({ id: task.id, projectId: newProjectId });
+                }
+              }}
+              disabled={move.isPending}
+              className="w-full text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-50 disabled:opacity-50"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.icon ? `${p.icon} ` : ""}
+                  {p.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

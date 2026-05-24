@@ -21,6 +21,15 @@ export const projectRouter = router({
     });
   }),
 
+  inbox: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.project.findFirst({
+      where: {
+        isInbox: true,
+        members: { some: { userId: ctx.session.user.id } },
+      },
+    });
+  }),
+
   create: protectedProcedure
     .input(
       z.object({

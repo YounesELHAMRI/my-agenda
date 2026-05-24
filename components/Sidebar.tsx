@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { QuickCapture } from "@/components/QuickCapture";
 
 export async function Sidebar() {
   const session = await auth();
@@ -21,6 +22,8 @@ export async function Sidebar() {
 
   return (
     <aside className="w-64 border-r border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-1 bg-gray-50 dark:bg-gray-950">
+      <QuickCapture />
+
       <h2 className="text-xs uppercase tracking-wide text-gray-500 px-2 mb-2">
         Projets
       </h2>

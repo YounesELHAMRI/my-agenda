@@ -151,4 +151,46 @@ export const taskRouter = router({
       await ctx.prisma.task.delete({ where: { id: input.id } });
       return { ok: true };
     }),
+
+  move: protectedProcedure
+    .input(z.object({ id: z.string(), projectId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const task = await ctx.prisma.task.findUnique({
+        where: { id: input.id },
+        select: { projectId: true, parentTaskId: true },
+      });
+      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+      if (task.projectId === input.projectId) {
+        return ctx.prisma.task.findUnique({ where: { id: input.id } });
+      }
+      if (task.parentTaskId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Déplace plutôt la tâche parente",
+        });
+      }
+
+      await requireProjectAccess(task.projectId, ctx.session.user.id, "EDITOR");
+      await requireProjectAccess(input.projectId, ctx.session.user.id, "EDITOR");
+
+      const last = await ctx.prisma.task.findFirst({
+        where: { projectId: input.projectId, parentTaskId: null },
+        orderBy: { position: "desc" },
+        select: { position: true },
+      });
+      const newPosition = (last?.position ?? 0) + 1;
+
+      // Move the parent + keep direct subtasks under the same project
+      return ctx.prisma.$transaction(async (tx) => {
+        const updated = await tx.task.update({
+          where: { id: input.id },
+          data: { projectId: input.projectId, position: newPosition },
+        });
+        await tx.task.updateMany({
+          where: { parentTaskId: input.id },
+          data: { projectId: input.projectId },
+        });
+        return updated;
+      });
+    }),
 });
