@@ -34,7 +34,8 @@ npm run db:generate   # regenerate Prisma client only
 The schema is built for **sharing from day one**, not bolted on. Read `prisma/schema.prisma` before changing anything in `server/trpc/routers/`.
 
 - `Project` does **not** carry an owner column. Membership is in `ProjectMember (project_id, user_id, role)` with `OWNER | EDITOR | VIEWER`. Always go through `requireProjectAccess` in `lib/permissions.ts` for any project-scoped mutation.
-- `Project.isInbox = true` is a special per-user project, seeded by Auth.js `events.createUser` in `lib/auth.ts` alongside `Personnel` and `Travail`. Not shareable, not deletable (app-level invariant).
+- `Project.isInbox = true` is a special per-user project, seeded by Auth.js `events.createUser` in `lib/auth.ts` alongside `Personnel`, `Travail` and `Souhaits`. Not shareable, not deletable (app-level invariant).
+- **Default projects added after launch** are back-filled by `lib/seed.ts → ensureDefaultProjects(userId)`, called from `app/projects/layout.tsx` on every render. Match is by exact name; renames are respected (no duplicates). When you add a new default, put it in both `DEFAULT_PROJECTS` (for new sign-ups) and `BACKFILL_DEFAULTS` (for existing users).
 - `Task.parentTaskId` self-references for **arbitrary-depth subtasks**, but the UI only exposes **one level** of nesting.
 - `Task.priority`: `1 = urgent → 4 = none` (Todoist convention).
 - `Task.recurrenceRule`: RFC 5545 RRULE string — schema is ready, no UI yet.

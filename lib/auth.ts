@@ -7,6 +7,7 @@ const DEFAULT_PROJECTS = [
   { name: "Inbox", icon: "📥", isInbox: true, position: 0 },
   { name: "Personnel", icon: "🏠", color: "#3B82F6", position: 1 },
   { name: "Travail", icon: "💼", color: "#10B981", position: 2 },
+  { name: "Souhaits", icon: "⭐", color: "#A855F7", position: 3 },
 ];
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
