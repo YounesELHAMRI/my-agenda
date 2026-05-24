@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import type { TaskWithSubtasks } from "@/lib/types";
 import { TaskRow } from "./TaskRow";
@@ -18,6 +19,7 @@ export function TasksPanel({
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const utils = trpc.useUtils();
+  const router = useRouter();
 
   const { data: tasks } = trpc.task.list.useQuery(
     { projectId },
@@ -28,6 +30,7 @@ export function TasksPanel({
     onSuccess: () => {
       setTitle("");
       utils.task.list.invalidate({ projectId });
+      router.refresh();
     },
   });
 

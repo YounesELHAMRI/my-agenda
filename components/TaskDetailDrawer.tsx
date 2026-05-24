@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import type { TaskWithSubtasks } from "@/lib/types";
 import { X, Flag, Trash2 } from "lucide-react";
@@ -25,6 +26,7 @@ export function TaskDetailDrawer({
   onClose: () => void;
 }) {
   const utils = trpc.useUtils();
+  const router = useRouter();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
@@ -58,6 +60,7 @@ export function TaskDetailDrawer({
   const move = trpc.task.move.useMutation({
     onSuccess: () => {
       utils.task.list.invalidate();
+      router.refresh();
       onClose();
     },
   });
@@ -65,6 +68,7 @@ export function TaskDetailDrawer({
   const del = trpc.task.delete.useMutation({
     onSuccess: () => {
       utils.task.list.invalidate({ projectId });
+      router.refresh();
       onClose();
     },
   });

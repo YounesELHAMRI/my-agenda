@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import type { SubtaskMeta } from "@/lib/types";
 import { optimisticToggleSubtask } from "@/lib/tasks";
@@ -14,6 +15,7 @@ export function SubtaskRow({
   projectId: string;
 }) {
   const utils = trpc.useUtils();
+  const router = useRouter();
   const [title, setTitle] = useState(subtask.title);
 
   useEffect(() => {
@@ -32,7 +34,10 @@ export function SubtaskRow({
     onError(_e, _v, ctx) {
       if (ctx?.prev) utils.task.list.setData({ projectId }, ctx.prev);
     },
-    onSettled: () => utils.task.list.invalidate({ projectId }),
+    onSettled: () => {
+      utils.task.list.invalidate({ projectId });
+      router.refresh();
+    },
   });
 
   const update = trpc.task.update.useMutation({
@@ -40,7 +45,10 @@ export function SubtaskRow({
   });
 
   const del = trpc.task.delete.useMutation({
-    onSettled: () => utils.task.list.invalidate({ projectId }),
+    onSettled: () => {
+      utils.task.list.invalidate({ projectId });
+      router.refresh();
+    },
   });
 
   const done = subtask.status === "DONE";

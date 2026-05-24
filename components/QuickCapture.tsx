@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Plus, X } from "lucide-react";
 
@@ -11,6 +12,7 @@ export function QuickCapture() {
   const [title, setTitle] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
+  const router = useRouter();
 
   // Mark mounted so we can use document.body for the portal (only available
   // on the client). MobileSidebar applies a `transform`, which would make
@@ -25,6 +27,7 @@ export function QuickCapture() {
       setTitle("");
       setIsOpen(false);
       utils.task.list.invalidate();
+      router.refresh();
     },
   });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import type { TaskWithSubtasks } from "@/lib/types";
 import { Flag, Trash2, ListChecks, Plus, Minus } from "lucide-react";
@@ -32,6 +33,7 @@ export function TaskRow({
   onToggleExpand: () => void;
 }) {
   const utils = trpc.useUtils();
+  const router = useRouter();
 
   const toggle = trpc.task.toggle.useMutation({
     async onMutate() {
@@ -55,11 +57,15 @@ export function TaskRow({
     },
     onSettled() {
       utils.task.list.invalidate({ projectId });
+      router.refresh();
     },
   });
 
   const del = trpc.task.delete.useMutation({
-    onSuccess: () => utils.task.list.invalidate({ projectId }),
+    onSuccess: () => {
+      utils.task.list.invalidate({ projectId });
+      router.refresh();
+    },
   });
 
   const done = task.status === "DONE";

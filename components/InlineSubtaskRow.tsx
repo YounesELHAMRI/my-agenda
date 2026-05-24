@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import type { SubtaskMeta } from "@/lib/types";
 import { optimisticToggleSubtask } from "@/lib/tasks";
@@ -13,6 +14,7 @@ export function InlineSubtaskRow({
   projectId: string;
 }) {
   const utils = trpc.useUtils();
+  const router = useRouter();
 
   const toggle = trpc.task.toggle.useMutation({
     async onMutate() {
@@ -28,11 +30,15 @@ export function InlineSubtaskRow({
     },
     onSettled() {
       utils.task.list.invalidate({ projectId });
+      router.refresh();
     },
   });
 
   const del = trpc.task.delete.useMutation({
-    onSettled: () => utils.task.list.invalidate({ projectId }),
+    onSettled: () => {
+      utils.task.list.invalidate({ projectId });
+      router.refresh();
+    },
   });
 
   const done = subtask.status === "DONE";
