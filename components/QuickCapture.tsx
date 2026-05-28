@@ -1,35 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
-import { trpc } from "@/lib/trpc/client";
 import { Plus, X } from "lucide-react";
+import { trpc } from "@/lib/trpc/client";
+import { TaskComposer } from "@/components/TaskComposer";
 
 export function QuickCapture() {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [title, setTitle] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const utils = trpc.useUtils();
-  const router = useRouter();
+  const { data: inbox } = trpc.project.inbox.useQuery();
 
   // Mark mounted so we can use document.body for the portal (only available
   // on the client). MobileSidebar applies a `transform`, which would make
   // the modal's `fixed left-1/2` resolve relative to the sidebar (~256px)
   // instead of the viewport. Portaling to body escapes that containing block.
   useEffect(() => setMounted(true), []);
-
-  const { data: inbox } = trpc.project.inbox.useQuery();
-
-  const create = trpc.task.create.useMutation({
-    onSuccess: () => {
-      setTitle("");
-      setIsOpen(false);
-      utils.task.list.invalidate();
-      router.refresh();
-    },
-  });
 
   // Ctrl+K / Cmd+K → open. Esc → close.
   useEffect(() => {
@@ -43,20 +29,6 @@ export function QuickCapture() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      // Focus after the modal mounts
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [isOpen]);
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = title.trim();
-    if (!inbox || !trimmed) return;
-    create.mutate({ projectId: inbox.id, title: trimmed });
-  }
 
   const modal = (
     <>
@@ -79,36 +51,19 @@ export function QuickCapture() {
             <X size={16} />
           </button>
         </div>
-        <form onSubmit={submit}>
-          <input
-            ref={inputRef}
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+        {inbox ? (
+          <TaskComposer
+            projectId={inbox.id}
+            allowProjectSelection
             placeholder="Que veux-tu noter ?"
-            enterKeyHint="send"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-50"
+            submitLabel="Capturer"
+            autoFocus
+            onCreated={() => setIsOpen(false)}
+            onCancel={() => setIsOpen(false)}
           />
-          <div className="flex justify-end gap-2 mt-3">
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-50"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={!title.trim() || !inbox || create.isPending}
-              className="px-4 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium disabled:opacity-40 hover:bg-blue-700"
-            >
-              Capturer
-            </button>
-          </div>
-        </form>
-        {!inbox && (
-          <p className="text-xs text-red-500 mt-2">
-            Inbox introuvable — recharge la page pour que le seed se fasse.
+        ) : (
+          <p className="text-sm text-red-500">
+            Inbox introuvable, recharge la page pour réessayer.
           </p>
         )}
       </div>
