@@ -1,7 +1,25 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import type { Prisma } from "@prisma/client";
 import { router, protectedProcedure } from "../init";
 import { requireProjectAccess } from "@/lib/permissions";
+
+async function syncParentStatus(tx: Prisma.TransactionClient, parentTaskId: string) {
+  const children = await tx.task.findMany({
+    where: { parentTaskId },
+    select: { status: true },
+  });
+  const allDone = children.length > 0 && children.every((child) => child.status === "DONE");
+  const desiredStatus = allDone ? "DONE" : "TODO";
+
+  await tx.task.updateMany({
+    where: { id: parentTaskId, NOT: { status: desiredStatus } },
+    data: {
+      status: desiredStatus,
+      completedAt: desiredStatus === "DONE" ? new Date() : null,
+    },
+  });
+}
 
 export const taskRouter = router({
   list: protectedProcedure
@@ -99,23 +117,76 @@ export const taskRouter = router({
       // If this was a subtask, sync the parent's status with its children:
       // all subtasks DONE → parent DONE, any not DONE → parent TODO.
       if (task.parentTaskId) {
-        const siblings = await ctx.prisma.task.findMany({
-          where: { parentTaskId: task.parentTaskId },
-          select: { status: true },
-        });
-        const allDone =
-          siblings.length > 0 && siblings.every((s) => s.status === "DONE");
-        const desiredStatus = allDone ? "DONE" : "TODO";
-        await ctx.prisma.task.updateMany({
-          where: { id: task.parentTaskId, NOT: { status: desiredStatus } },
-          data: {
-            status: desiredStatus,
-            completedAt: desiredStatus === "DONE" ? new Date() : null,
-          },
-        });
+        await syncParentStatus(ctx.prisma, task.parentTaskId);
       }
 
       return updated;
+    }),
+
+  reparent: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        parentTaskId: z.string().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const task = await ctx.prisma.task.findUnique({
+        where: { id: input.id },
+        select: { projectId: true, parentTaskId: true },
+      });
+      if (!task) throw new TRPCError({ code: "NOT_FOUND" });
+      if (task.parentTaskId === input.parentTaskId) {
+        return ctx.prisma.task.findUnique({ where: { id: input.id } });
+      }
+
+      await requireProjectAccess(task.projectId, ctx.session.user.id, "EDITOR");
+
+      if (input.parentTaskId) {
+        const targetParent = await ctx.prisma.task.findUnique({
+          where: { id: input.parentTaskId },
+          select: { projectId: true, parentTaskId: true },
+        });
+        if (
+          !targetParent ||
+          targetParent.projectId !== task.projectId ||
+          targetParent.parentTaskId !== null
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Parent cible invalide",
+          });
+        }
+      }
+
+      const last = await ctx.prisma.task.findFirst({
+        where: {
+          projectId: task.projectId,
+          parentTaskId: input.parentTaskId,
+        },
+        orderBy: { position: "desc" },
+        select: { position: true },
+      });
+      const newPosition = (last?.position ?? 0) + 1;
+
+      return ctx.prisma.$transaction(async (tx) => {
+        const updated = await tx.task.update({
+          where: { id: input.id },
+          data: {
+            parentTaskId: input.parentTaskId,
+            position: newPosition,
+          },
+        });
+
+        if (task.parentTaskId) {
+          await syncParentStatus(tx, task.parentTaskId);
+        }
+        if (input.parentTaskId) {
+          await syncParentStatus(tx, input.parentTaskId);
+        }
+
+        return updated;
+      });
     }),
 
   update: protectedProcedure

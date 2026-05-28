@@ -46,6 +46,7 @@ export function TaskDetailDrawer({
   }, [onClose]);
 
   const { data: projects = [] } = trpc.project.list.useQuery();
+  const { data: parentTasks = [] } = trpc.task.list.useQuery({ projectId });
 
   const update = trpc.task.update.useMutation({
     onSuccess: () => utils.task.list.invalidate({ projectId }),
@@ -224,6 +225,12 @@ export function TaskDetailDrawer({
                         key={sub.id}
                         subtask={sub}
                         projectId={projectId}
+                        currentParentId={task.id}
+                        parentOptions={parentTasks.map((parent) => ({
+                          id: parent.id,
+                          title: parent.title,
+                          icon: null,
+                        }))}
                       />
                     ))}
                   </ul>
@@ -245,6 +252,12 @@ export function TaskDetailDrawer({
                         key={sub.id}
                         subtask={sub}
                         projectId={projectId}
+                        currentParentId={task.id}
+                        parentOptions={parentTasks.map((parent) => ({
+                          id: parent.id,
+                          title: parent.title,
+                          icon: null,
+                        }))}
                       />
                     ))}
                   </ul>
