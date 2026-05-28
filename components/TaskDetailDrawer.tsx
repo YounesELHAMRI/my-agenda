@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import type { TaskWithSubtasks } from "@/lib/types";
-import { X, Flag, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Flag, Trash2, X } from "lucide-react";
 import { toDateInputValue, fromDateInputValue } from "@/lib/date";
 import { SubtaskRow } from "./SubtaskRow";
 import { RemindersSection } from "./RemindersSection";
@@ -30,6 +30,7 @@ export function TaskDetailDrawer({
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [showCompletedSubtasks, setShowCompletedSubtasks] = useState(false);
 
   useEffect(() => {
     setTitle(task.title);
@@ -106,6 +107,13 @@ export function TaskDetailDrawer({
     });
   }
 
+  const activeSubtasks = task.subtasks.filter((sub) => sub.status !== "DONE");
+  const completedSubtasks = task.subtasks.filter((sub) => sub.status === "DONE");
+  const totalSubtasks = task.subtasks.length;
+  const completedCount = completedSubtasks.length;
+  const progress =
+    totalSubtasks > 0 ? Math.round((completedCount / totalSubtasks) * 100) : 0;
+
   return (
     <>
       <div
@@ -158,28 +166,98 @@ export function TaskDetailDrawer({
           <div>
             <label className="text-xs uppercase tracking-wide text-gray-500 mb-1.5 block">
               Sous-tâches{" "}
-              {task.subtasks.length > 0 && (
+              {totalSubtasks > 0 && (
                 <span className="text-gray-400 normal-case tracking-normal ml-1">
-                  ({task.subtasks.filter((s) => s.status === "DONE").length}/
-                  {task.subtasks.length})
+                  ({completedCount}/{totalSubtasks})
                 </span>
               )}
             </label>
-            <ul className="space-y-1 mb-2">
-              {task.subtasks.map((sub) => (
-                <SubtaskRow
-                  key={sub.id}
-                  subtask={sub}
-                  projectId={projectId}
-                />
-              ))}
-            </ul>
+            {totalSubtasks > 0 && (
+              <div className="mb-3 space-y-2">
+                <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-blue-600 transition-all"
+                    style={{ width: `${progress}%` }}
+                    aria-hidden
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{progress}% terminé</span>
+                  <span>
+                    {completedCount} faite{completedCount > 1 ? "s" : ""} sur{" "}
+                    {totalSubtasks}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <p className="text-xs uppercase tracking-wide text-gray-500">
+                    À faire
+                  </p>
+                  {completedSubtasks.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowCompletedSubtasks((current) => !current)
+                      }
+                      className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    >
+                      {showCompletedSubtasks ? (
+                        <ChevronDown size={14} />
+                      ) : (
+                        <ChevronRight size={14} />
+                      )}
+                      {showCompletedSubtasks
+                        ? "Masquer les terminées"
+                        : `Afficher les terminées (${completedSubtasks.length})`}
+                    </button>
+                  )}
+                </div>
+
+                {activeSubtasks.length > 0 ? (
+                  <ul className="space-y-1">
+                    {activeSubtasks.map((sub) => (
+                      <SubtaskRow
+                        key={sub.id}
+                        subtask={sub}
+                        projectId={projectId}
+                      />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500 bg-gray-50 dark:bg-gray-800/60 rounded-md px-3 py-2">
+                    Toutes les sous-tâches sont terminées.
+                  </p>
+                )}
+              </div>
+
+              {showCompletedSubtasks && completedSubtasks.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">
+                    Terminées
+                  </p>
+                  <ul className="space-y-1 opacity-80">
+                    {completedSubtasks.map((sub) => (
+                      <SubtaskRow
+                        key={sub.id}
+                        subtask={sub}
+                        projectId={projectId}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
             <form onSubmit={addSubtask} className="flex gap-2">
               <input
                 type="text"
                 value={newSubtaskTitle}
                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                placeholder="Ajouter une sous-tâche"
+                placeholder="Ajouter une étape..."
                 enterKeyHint="send"
                 className="flex-1 text-sm bg-transparent border border-dashed border-gray-300 dark:border-gray-700 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-solid text-gray-900 dark:text-gray-50"
               />
